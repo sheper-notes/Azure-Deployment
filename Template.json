@@ -1,0 +1,513 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {},
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts",
+            "apiVersion": "2023-09-15",
+            "name": "sheper",
+            "location": "West Europe",
+            "tags": {
+                "defaultExperience": "Cassandra",
+                "hidden-cosmos-mmspecial": ""
+            },
+            "kind": "GlobalDocumentDB",
+            "identity": {
+                "type": "None"
+            },
+            "properties": {
+                "publicNetworkAccess": "Enabled",
+                "enableAutomaticFailover": false,
+                "enableMultipleWriteLocations": false,
+                "isVirtualNetworkFilterEnabled": false,
+                "virtualNetworkRules": [],
+                "disableKeyBasedMetadataWriteAccess": false,
+                "enableFreeTier": true,
+                "enableAnalyticalStorage": false,
+                "analyticalStorageConfiguration": {
+                    "schemaType": "WellDefined"
+                },
+                "databaseAccountOfferType": "Standard",
+                "defaultIdentity": "FirstPartyIdentity",
+                "networkAclBypass": "None",
+                "disableLocalAuth": false,
+                "enablePartitionMerge": false,
+                "enableBurstCapacity": false,
+                "minimalTlsVersion": "Tls12",
+                "consistencyPolicy": {
+                    "defaultConsistencyLevel": "Session",
+                    "maxIntervalInSeconds": 5,
+                    "maxStalenessPrefix": 100
+                },
+                "locations": [
+                    {
+                        "locationName": "West Europe",
+                        "provisioningState": "Succeeded",
+                        "failoverPriority": 0,
+                        "isZoneRedundant": false
+                    }
+                ],
+                "cors": [],
+                "capabilities": [
+                    {
+                        "name": "EnableCassandra"
+                    }
+                ],
+                "ipRules": [],
+                "backupPolicy": {
+                    "type": "Periodic",
+                    "periodicModeProperties": {
+                        "backupIntervalInMinutes": 240,
+                        "backupRetentionIntervalInHours": 8,
+                        "backupStorageRedundancy": "Geo"
+                    }
+                },
+                "networkAclBypassResourceIds": [],
+                "capacity": {
+                    "totalThroughputLimit": 1000
+                },
+                "keysMetadata": {}
+            }
+        },
+        {
+            "type": "microsoft.insights/actionGroups",
+            "apiVersion": "2023-01-01",
+            "name": "RecommendedAlertRules-AG-1",
+            "location": "Global",
+            "properties": {
+                "groupShortName": "recalert1",
+                "enabled": true,
+                "emailReceivers": [
+                    {
+                        "name": "Email_-EmailAction-",
+                        "emailAddress": "456098@student.fontys.nl",
+                        "useCommonAlertSchema": true
+                    }
+                ],
+                "smsReceivers": [],
+                "webhookReceivers": [],
+                "eventHubReceivers": [],
+                "itsmReceivers": [],
+                "azureAppPushReceivers": [],
+                "automationRunbookReceivers": [],
+                "voiceReceivers": [],
+                "logicAppReceivers": [],
+                "azureFunctionReceivers": [],
+                "armRoleReceivers": []
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2023-06-01",
+            "name": "sheper-vnet",
+            "location": "westeurope",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "10.224.0.0/12"
+                    ]
+                },
+                "subnets": [
+                    {
+                        "name": "default",
+                        "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'sheper-vnet', 'default')]",
+                        "properties": {
+                            "addressPrefix": "10.224.0.0/16",
+                            "serviceEndpoints": [
+                                {
+                                    "service": "Microsoft.ContainerRegistry",
+                                    "locations": [
+                                        "*"
+                                    ]
+                                }
+                            ],
+                            "delegations": [],
+                            "privateEndpointNetworkPolicies": "Disabled",
+                            "privateLinkServiceNetworkPolicies": "Enabled"
+                        },
+                        "type": "Microsoft.Network/virtualNetworks/subnets"
+                    }
+                ],
+                "virtualNetworkPeerings": [],
+                "enableDdosProtection": false
+            }
+        },
+        {
+            "type": "Microsoft.ContainerService/managedClusters",
+            "apiVersion": "2023-08-02-preview",
+            "name": "sheper",
+            "location": "westeurope",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'sheper-vnet', 'default')]"
+            ],
+            "sku": {
+                "name": "Base",
+                "tier": "Free"
+            },
+            "identity": {
+                "type": "SystemAssigned"
+            },
+            "properties": {
+                "kubernetesVersion": "1.27.7",
+                "dnsPrefix": "sheper-dns",
+                "agentPoolProfiles": [
+                    {
+                        "name": "agentpool",
+                        "count": 0,
+                        "vmSize": "Standard_DS2_v2",
+                        "osDiskSizeGB": 128,
+                        "osDiskType": "Managed",
+                        "kubeletDiskType": "OS",
+                        "vnetSubnetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'sheper-vnet', 'default')]",
+                        "maxPods": 110,
+                        "type": "VirtualMachineScaleSets",
+                        "enableAutoScaling": false,
+                        "powerState": {
+                            "code": "Stopped"
+                        },
+                        "orchestratorVersion": "1.27.7",
+                        "enableNodePublicIP": false,
+                        "mode": "System",
+                        "osType": "Linux",
+                        "osSKU": "Ubuntu",
+                        "enableFIPS": false,
+                        "securityProfile": {
+                            "sshAccess": "LocalUser"
+                        }
+                    }
+                ],
+                "windowsProfile": {
+                    "adminUsername": "azureuser",
+                    "enableCSIProxy": true
+                },
+                "servicePrincipalProfile": {
+                    "clientId": "msi"
+                },
+                "addonProfiles": {
+                    "azureKeyvaultSecretsProvider": {
+                        "enabled": false
+                    },
+                    "azurepolicy": {
+                        "enabled": false
+                    },
+                    "httpApplicationRouting": {
+                        "enabled": true,
+                        "config": {
+                            "HTTPApplicationRoutingZoneName": "dc8024dab97d42558590.westeurope.aksapp.io"
+                        }
+                    }
+                },
+                "nodeResourceGroup": "MC_sheper_sheper_westeurope",
+                "enableRBAC": true,
+                "supportPlan": "KubernetesOfficial",
+                "networkProfile": {
+                    "networkPlugin": "azure",
+                    "networkPolicy": "calico",
+                    "networkDataplane": "azure",
+                    "loadBalancerSku": "Standard",
+                    "loadBalancerProfile": {
+                        "managedOutboundIPs": {
+                            "count": 1
+                        },
+                        "effectiveOutboundIPs": [
+                            {
+                                "id": "/subscriptions/c55019be-5d64-4446-b2e4-613d4ba35cf3/resourceGroups/MC_sheper_sheper_westeurope/providers/Microsoft.Network/publicIPAddresses/d8066cef-b628-46b3-82da-003d9553aeb8"
+                            }
+                        ],
+                        "backendPoolType": "nodeIPConfiguration"
+                    },
+                    "serviceCidr": "10.0.0.0/16",
+                    "dnsServiceIP": "10.0.0.10",
+                    "outboundType": "loadBalancer",
+                    "serviceCidrs": [
+                        "10.0.0.0/16"
+                    ],
+                    "ipFamilies": [
+                        "IPv4"
+                    ]
+                },
+                "identityProfile": {
+                    "kubeletidentity": {
+                        "resourceId": "/subscriptions/c55019be-5d64-4446-b2e4-613d4ba35cf3/resourcegroups/MC_sheper_sheper_westeurope/providers/Microsoft.ManagedIdentity/userAssignedIdentities/sheper-agentpool",
+                        "clientId": "bad6d1b9-5b77-46a8-9d51-fb3a3459f32d",
+                        "objectId": "26c2ced8-4e28-4406-aaa3-4d1e34e7f96f"
+                    }
+                },
+                "autoUpgradeProfile": {
+                    "upgradeChannel": "patch",
+                    "nodeOSUpgradeChannel": "NodeImage"
+                },
+                "disableLocalAccounts": false,
+                "securityProfile": {},
+                "storageProfile": {
+                    "diskCSIDriver": {
+                        "enabled": true,
+                        "version": "v1"
+                    },
+                    "fileCSIDriver": {
+                        "enabled": true
+                    },
+                    "snapshotController": {
+                        "enabled": true
+                    }
+                },
+                "oidcIssuerProfile": {
+                    "enabled": false
+                },
+                "workloadAutoScalerProfile": {},
+                "metricsProfile": {
+                    "costAnalysis": {
+                        "enabled": false
+                    }
+                }
+            }
+        },
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts/cassandraKeyspaces",
+            "apiVersion": "2023-09-15",
+            "name": "sheper/boardobj_keyspace",
+            "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', 'sheper')]"
+            ],
+            "properties": {
+                "resource": {
+                    "id": "boardobj_keyspace"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.Network/virtualNetworks/subnets",
+            "apiVersion": "2023-06-01",
+            "name": "sheper-vnet/default",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/virtualNetworks', 'sheper-vnet')]"
+            ],
+            "properties": {
+                "addressPrefix": "10.224.0.0/16",
+                "serviceEndpoints": [
+                    {
+                        "service": "Microsoft.ContainerRegistry",
+                        "locations": [
+                            "*"
+                        ]
+                    }
+                ],
+                "delegations": [],
+                "privateEndpointNetworkPolicies": "Disabled",
+                "privateLinkServiceNetworkPolicies": "Enabled"
+            }
+        },
+        {
+            "type": "Microsoft.ContainerService/managedClusters/agentPools",
+            "apiVersion": "2023-08-02-preview",
+            "name": "sheper/agentpool",
+            "dependsOn": [
+                "[resourceId('Microsoft.ContainerService/managedClusters', 'sheper')]",
+                "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'sheper-vnet', 'default')]"
+            ],
+            "properties": {
+                "count": 0,
+                "vmSize": "Standard_DS2_v2",
+                "osDiskSizeGB": 128,
+                "osDiskType": "Managed",
+                "kubeletDiskType": "OS",
+                "vnetSubnetID": "[resourceId('Microsoft.Network/virtualNetworks/subnets', 'sheper-vnet', 'default')]",
+                "maxPods": 110,
+                "type": "VirtualMachineScaleSets",
+                "enableAutoScaling": false,
+                "powerState": {
+                    "code": "Stopped"
+                },
+                "orchestratorVersion": "1.27.7",
+                "enableNodePublicIP": false,
+                "mode": "System",
+                "osType": "Linux",
+                "osSKU": "Ubuntu",
+                "enableFIPS": false,
+                "securityProfile": {
+                    "sshAccess": "LocalUser"
+                }
+            }
+        },
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts/cassandraKeyspaces/tables",
+            "apiVersion": "2023-09-15",
+            "name": "sheper/boardobj_keyspace/board_objects",
+            "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/cassandraKeyspaces', 'sheper', 'boardobj_keyspace')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', 'sheper')]"
+            ],
+            "properties": {
+                "resource": {
+                    "id": "board_objects",
+                    "defaultTtl": 0,
+                    "schema": {
+                        "columns": [
+                            {
+                                "name": "id",
+                                "type": "bigint"
+                            },
+                            {
+                                "name": "boardid",
+                                "type": "bigint"
+                            },
+                            {
+                                "name": "name",
+                                "type": "text"
+                            },
+                            {
+                                "name": "x",
+                                "type": "float"
+                            },
+                            {
+                                "name": "y",
+                                "type": "float"
+                            },
+                            {
+                                "name": "width",
+                                "type": "float"
+                            },
+                            {
+                                "name": "height",
+                                "type": "float"
+                            },
+                            {
+                                "name": "color",
+                                "type": "text"
+                            },
+                            {
+                                "name": "__sys_clts",
+                                "type": "__sys_clts_type_board_objects"
+                            },
+                            {
+                                "name": "__sys_rw_ts",
+                                "type": "cellleveltimestampvarbigint"
+                            },
+                            {
+                                "name": "__sys_clts_tmbstn",
+                                "type": "__sys_clts_tmbstn_type_board_objects"
+                            },
+                            {
+                                "name": "__sys_rw_tmbstn",
+                                "type": "cellleveltimestampvarbigint"
+                            },
+                            {
+                                "name": "__sys_clttl",
+                                "type": "tuple<cellleveltimestampvarbigint, __sys_clttl_type_board_objects>"
+                            },
+                            {
+                                "name": "__sys_rw_ttl",
+                                "type": "tuple<cellleveltimestampvarbigint, cellleveltimestampvarbigint>"
+                            }
+                        ],
+                        "partitionKeys": [
+                            {
+                                "name": "id"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "type": "microsoft.insights/metricAlerts",
+            "apiVersion": "2018-03-01",
+            "name": "CPU Usage Percentage - sheper",
+            "location": "Global",
+            "dependsOn": [
+                "[resourceId('Microsoft.ContainerService/managedClusters', 'sheper')]",
+                "[resourceId('microsoft.insights/actionGroups', 'RecommendedAlertRules-AG-1')]"
+            ],
+            "properties": {
+                "severity": 3,
+                "enabled": true,
+                "scopes": [
+                    "[resourceId('Microsoft.ContainerService/managedClusters', 'sheper')]"
+                ],
+                "evaluationFrequency": "PT5M",
+                "windowSize": "PT5M",
+                "criteria": {
+                    "allOf": [
+                        {
+                            "threshold": 95,
+                            "name": "Metric1",
+                            "metricNamespace": "Microsoft.ContainerService/managedClusters",
+                            "metricName": "node_cpu_usage_percentage",
+                            "operator": "GreaterThan",
+                            "timeAggregation": "Average",
+                            "criterionType": "StaticThresholdCriterion"
+                        }
+                    ],
+                    "odata.type": "Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria"
+                },
+                "targetResourceType": "Microsoft.ContainerService/managedClusters",
+                "actions": [
+                    {
+                        "actionGroupId": "[resourceId('microsoft.insights/actionGroups', 'RecommendedAlertRules-AG-1')]",
+                        "webHookProperties": {}
+                    }
+                ]
+            }
+        },
+        {
+            "type": "microsoft.insights/metricAlerts",
+            "apiVersion": "2018-03-01",
+            "name": "Memory Working Set Percentage - sheper",
+            "location": "Global",
+            "dependsOn": [
+                "[resourceId('Microsoft.ContainerService/managedClusters', 'sheper')]",
+                "[resourceId('microsoft.insights/actionGroups', 'RecommendedAlertRules-AG-1')]"
+            ],
+            "properties": {
+                "severity": 3,
+                "enabled": true,
+                "scopes": [
+                    "[resourceId('Microsoft.ContainerService/managedClusters', 'sheper')]"
+                ],
+                "evaluationFrequency": "PT5M",
+                "windowSize": "PT5M",
+                "criteria": {
+                    "allOf": [
+                        {
+                            "threshold": 100,
+                            "name": "Metric1",
+                            "metricNamespace": "Microsoft.ContainerService/managedClusters",
+                            "metricName": "node_memory_working_set_percentage",
+                            "operator": "GreaterThan",
+                            "timeAggregation": "Average",
+                            "criterionType": "StaticThresholdCriterion"
+                        }
+                    ],
+                    "odata.type": "Microsoft.Azure.Monitor.MultipleResourceMultipleMetricCriteria"
+                },
+                "targetResourceType": "Microsoft.ContainerService/managedClusters",
+                "actions": [
+                    {
+                        "actionGroupId": "[resourceId('microsoft.insights/actionGroups', 'RecommendedAlertRules-AG-1')]",
+                        "webHookProperties": {}
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.DocumentDB/databaseAccounts/cassandraKeyspaces/tables/throughputSettings",
+            "apiVersion": "2023-09-15",
+            "name": "sheper/boardobj_keyspace/board_objects/default",
+            "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/cassandraKeyspaces/tables', 'sheper', 'boardobj_keyspace', 'board_objects')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/cassandraKeyspaces', 'sheper', 'boardobj_keyspace')]",
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', 'sheper')]"
+            ],
+            "properties": {
+                "resource": {
+                    "throughput": 100,
+                    "autoscaleSettings": {
+                        "maxThroughput": 1000
+                    }
+                }
+            }
+        }
+    ]
+}
